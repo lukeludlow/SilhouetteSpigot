@@ -8,24 +8,22 @@ import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.reflect.StructureModifier;
-import it.unimi.dsi.fastutil.ints.IntList;
-import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.Arrays;
 import java.util.List;
 
-import static org.bukkit.Bukkit.getLogger;
 
 public class SilhouettePlugin extends JavaPlugin {
 
     private SyncTask syncTask = null;
+//    private ProtocolLibraryAccessor protocolLibraryAccessor = null;
 
     @Override
     public void onEnable() {
         super.onEnable();
-        getLogger().info("silhouette onEnable");
+//        getLogger().info("silhouette onEnable");
         try {
+//            protocolLibraryAccessor = new ProtocolLibraryAccessor();
             syncTask = createSyncTask();
         } catch (UnsupportedMinecraftVersionException e) {
             e.printStackTrace();
@@ -36,7 +34,8 @@ public class SilhouettePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new LoginListener(syncTask), this);
         syncTask.runTaskTimer(this, 0L, 1L);
 
-        ProtocolManager protocolManager = ProtocolLibrary.getProtocolManager();
+//        ProtocolManager protocolManager = ProtocolLibrary.getProtocolManager();
+        ProtocolManager protocolManager = ProtocolLibraryAccessor.getProtocolManager();
         protocolManager.addPacketListener(
                 new PacketAdapter(this, ListenerPriority.NORMAL, PacketType.Play.Server.ENTITY_DESTROY) {
                     @Override
@@ -48,7 +47,7 @@ public class SilhouettePlugin extends JavaPlugin {
                             entityIdIntLists.getValues().forEach(list -> {
                                 list.forEach(entityId -> {
                                     if (getServer().getOnlinePlayers().stream().anyMatch(player -> player.getEntityId() == entityId)) {
-                                        getLogger().info("cancelling packet");
+//                                        getLogger().info("cancelling packet");
                                         event.setCancelled(true);
                                     }
                                 });
@@ -94,6 +93,10 @@ public class SilhouettePlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         super.onDisable();
-        getLogger().info("silhouette onDisable");
+//        getLogger().info("silhouette onDisable");
+        if(syncTask != null) {
+            syncTask.cancel();
+            syncTask = null;
+        }
     }
 }
