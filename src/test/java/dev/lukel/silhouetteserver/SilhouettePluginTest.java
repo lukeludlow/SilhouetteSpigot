@@ -1,48 +1,27 @@
 package dev.lukel.silhouetteserver;
 
-import com.comphenix.protocol.ProtocolConfig;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
-import com.comphenix.protocol.error.BasicErrorReporter;
-import com.comphenix.protocol.error.ErrorReporter;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketListener;
-import net.minecraft.SharedConstants;
+import dev.lukel.silhouetteserver.player.BukkitCraftPlayerFactory;
 import org.bukkit.Server;
-import org.bukkit.craftbukkit.v1_18_R1.CraftServer;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.mockito.stubbing.Answer;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import org.powermock.reflect.Whitebox;
 
-import static org.junit.Assert.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.powermock.api.easymock.PowerMock.createMock;
-import static org.powermock.api.easymock.PowerMock.expectNew;
-import static org.powermock.api.easymock.PowerMock.replay;
-import static org.powermock.api.easymock.PowerMock.verify;
+import java.util.logging.Logger;
 
-//@PrepareForTest(SilhouettePlugin.class)
-@PrepareForTest({SilhouettePlugin.class, ProtocolLibrary.class, ProtocolLibraryAccessor.class, BasicErrorReporter.class})
-//@PrepareForTest({SilhouettePlugin.class, ProtocolLibraryAccessor.class})
+import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
+import static org.powermock.api.easymock.PowerMock.verify;
+import static org.powermock.api.easymock.PowerMock.*;
+
+@PrepareForTest(SilhouettePlugin.class)
 @RunWith(PowerMockRunner.class)
 public class SilhouettePluginTest {
 
@@ -53,9 +32,9 @@ public class SilhouettePluginTest {
     @Mock
     PluginManager pluginManagerMock;
     @Mock
-    ProtocolManager protocolManagerMock;
-//    @Mock
-//    ProtocolLibraryAccessor protocolLibraryMock;
+    ProtocolLibraryAccessor protocolLibraryAccessorMock;
+    @Mock
+    Logger loggerMock;
 
     SilhouettePlugin plugin;
 
@@ -66,42 +45,26 @@ public class SilhouettePluginTest {
     }
 
     @Test
-    public void onEnable_enablesPlugin() throws Exception {
+    public void onEnable_enablesPlugin() {
         plugin = spy(plugin);
+        when(plugin.getLogger()).thenReturn(loggerMock);
         when(plugin.getServer()).thenReturn(serverMock);
         when(serverMock.getPluginManager()).thenReturn(pluginManagerMock);
         doReturn(syncTaskMock).when(plugin).createSyncTask();
-
-        SharedConstants.a();
-        String serverVersion = CraftServer.class.getPackage().getImplementationVersion();
-        String releaseTarget = SharedConstants.b().getReleaseTarget();
-        when(serverMock.getVersion()).thenReturn(serverVersion + " (MC: " + releaseTarget + ")");
-
-        doNothing().when(protocolManagerMock).addPacketListener(any(PacketListener.class));
-        PowerMockito.mockStatic(ProtocolLibraryAccessor.class);
-        when(ProtocolLibraryAccessor.getProtocolManager()).thenAnswer((Answer<ProtocolManager>) invocation -> protocolManagerMock);
-//        PowerMockito.when(ProtocolLibraryAccessor.getProtocolManager()).thenReturn(protocolManagerMock);
-
-//        doReturn(protocolManagerMock).when(ProtocolLibraryAccessor.getProtocolManager());
-//        when(ProtocolLibrary.getProtocolManager()).thenReturn(protocolManagerMock);
-//        ProtocolLibraryAccessor protocolLibraryMock = createMock(ProtocolLibraryAccessor.class);
-//        expectNew(ProtocolLibraryAccessor.class).andReturn(protocolLibraryMock);
-//        replay(protocolLibraryMock, ProtocolLibraryAccessor.class);
-//        when(protocolLibraryMock.getProtocolManager()).thenReturn(protocolManagerMock);
-
+        doReturn(protocolLibraryAccessorMock).when(plugin).createProtocolLibraryAccessor();
         plugin.onEnable();
         verify(pluginManagerMock, times(1)).registerEvents(any(LoginListener.class), eq(plugin));
         verify(syncTaskMock, times(1)).runTaskTimer(eq(plugin), anyLong(), anyLong());
     }
 
     @Test
-    public void onEnable_withException_disablesPlugin() throws UnsupportedMinecraftVersionException {
-        plugin = spy(plugin);
-        when(plugin.getServer()).thenReturn(serverMock);
-        when(serverMock.getPluginManager()).thenReturn(pluginManagerMock);
-        doThrow(UnsupportedMinecraftVersionException.class).when(plugin).createSyncTask();
-        plugin.onEnable();
-        verify(pluginManagerMock, times(1)).disablePlugin(plugin);
+    public void createProtocolLibraryAccessor_createsAccessor() throws Exception {
+        protocolLibraryAccessorMock = createMock(ProtocolLibraryAccessor.class);
+        expectNew(ProtocolLibraryAccessor.class, plugin).andReturn(protocolLibraryAccessorMock);
+        replay(protocolLibraryAccessorMock, ProtocolLibraryAccessor.class);
+        ProtocolLibraryAccessor result = plugin.createProtocolLibraryAccessor();
+        verify(protocolLibraryAccessorMock, ProtocolLibraryAccessor.class);
+        assertEquals(result, protocolLibraryAccessorMock);
     }
 
     @Test
@@ -122,7 +85,9 @@ public class SilhouettePluginTest {
 
     @Test
     public void onDisable_disablesPluginCancelsTask() {
+        plugin = spy(plugin);
         Whitebox.setInternalState(plugin, "syncTask", syncTaskMock);
+        when(plugin.getLogger()).thenReturn(loggerMock);
         plugin.onDisable();
         verify(syncTaskMock, times(1)).cancel();
     }
