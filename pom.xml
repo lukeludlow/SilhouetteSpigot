@@ -5,12 +5,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>dev.lukel</groupId>
-    <artifactId>silhouette-server</artifactId>
+    <artifactId>SilhouetteServer</artifactId>
     <version>1.0.0</version>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <repositories>
@@ -83,7 +84,8 @@
                             <goal>copy-resources</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>C:\Users\lukel\Downloads\lukeserver\luketest\plugins</outputDirectory> // the place you want to put it
+                            <outputDirectory>/Users/luke/code/SilhouetteSpigot/testserver/plugins</outputDirectory>
+<!--                            <outputDirectory>C:\Users\lukel\Downloads\lukeserver\luketest\plugins</outputDirectory> // the place you want to put it-->
                             <resources>
                                 <resource>
                                     <directory>${basedir}/target</directory>

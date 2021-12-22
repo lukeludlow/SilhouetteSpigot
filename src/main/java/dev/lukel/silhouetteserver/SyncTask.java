@@ -1,62 +1,46 @@
 package dev.lukel.silhouetteserver;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
-import com.comphenix.protocol.events.ListenerPriority;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketContainer;
-import com.comphenix.protocol.events.PacketEvent;
-import com.comphenix.protocol.reflect.StructureModifier;
+import dev.lukel.silhouetteserver.player.BukkitCraftPlayer;
+import dev.lukel.silhouetteserver.player.BukkitCraftPlayerFactory;
 import io.netty.buffer.Unpooled;
 import net.minecraft.network.PacketDataSerializer;
 import net.minecraft.network.protocol.game.PacketPlayOutEntity;
 import net.minecraft.network.protocol.game.PacketPlayOutEntityHeadRotation;
 import net.minecraft.network.protocol.game.PacketPlayOutNamedEntitySpawn;
-import net.minecraft.network.protocol.game.PacketPlayOutSpawnEntityLiving;
-import net.minecraft.resources.MinecraftKey;
-import net.minecraft.server.level.EntityPlayer;
 import org.bukkit.Location;
-import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.Map;
 import java.util.HashMap;
-import java.util.UUID;
 
-import static org.bukkit.Bukkit.getServer;
 import static org.bukkit.Bukkit.getWorlds;
 
 public class SyncTask extends BukkitRunnable {
 
-    private SilhouettePlugin appleSkinSpigotPlugin;
+    private SilhouettePlugin plugin;
     private BukkitCraftPlayer craftPlayer;
 
     private Map<Integer, Location> playerPositions;
 
     private int viewDistance;
 
-
-    SyncTask(SilhouettePlugin appleSkinSpigotPlugin, BukkitCraftPlayerFactory bukkitCraftPlayerFactory) throws UnsupportedMinecraftVersionException {
-        this.appleSkinSpigotPlugin = appleSkinSpigotPlugin;
+    SyncTask(SilhouettePlugin plugin, BukkitCraftPlayerFactory bukkitCraftPlayerFactory) {
+        this.plugin = plugin;
 
         playerPositions = new HashMap<>();
 
-        craftPlayer = bukkitCraftPlayerFactory.getBukkitCraftPlayer(appleSkinSpigotPlugin.getServer());
-        if(craftPlayer == null) {
-            throw new UnsupportedMinecraftVersionException();
-        }
+        craftPlayer = bukkitCraftPlayerFactory.getBukkitCraftPlayer(plugin.getServer());
 
         viewDistance = getWorlds().get(0).getViewDistance();
-//        getLogger().info(String.format("view distance = %d", viewDistance));
+        plugin.getLogger().info(String.format("view distance = %d", viewDistance));
     }
 
     @Override
     public void run() {
-        for(Player player : appleSkinSpigotPlugin.getServer().getOnlinePlayers()) {
+        for(Player player : plugin.getServer().getOnlinePlayers()) {
 //            getLogger().info(String.format("updating player uuid=%s entityid=%d", player.getUniqueId(), player.getEntityId()));
-            for (Player otherPlayer : appleSkinSpigotPlugin.getServer().getOnlinePlayers()) {
+            for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
                 double distance = player.getLocation().distance(otherPlayer.getLocation());
 //                getLogger().info(String.format("distance between players = %s", distance));
                 if (distance > 160) {
@@ -74,6 +58,7 @@ public class SyncTask extends BukkitRunnable {
         Location currentLocation = otherPlayer.getLocation();
         Location previousLocation = playerPositions.get(otherPlayer.getEntityId());
         if (previousLocation == null || isDifferentPosition(previousLocation, currentLocation)) {
+//            craftPlayer.sendPacket(player, buildSpawnPlayerPacket(otherPlayer));
             craftPlayer.sendPacket(player, buildMoveLookPacket(otherPlayer, previousLocation, currentLocation));
             craftPlayer.sendPacket(player, buildHeadLookPacket(otherPlayer));
             playerPositions.put(otherPlayer.getEntityId(), currentLocation);
@@ -130,17 +115,18 @@ public class SyncTask extends BukkitRunnable {
         return (short) ((current * 32 - previous * 32) * 128);
     }
 
-    void onPlayerLogIn(Player player) {
-//        getLogger().info(String.format("onPlayerLogIn"));
+    void onPlayerJoin(Player player) {
+        plugin.getLogger().info(String.format("onPlayerJoin"));
         playerPositions.remove(player.getEntityId());
-        for(Player otherPlayer: appleSkinSpigotPlugin.getServer().getOnlinePlayers()) {
-            craftPlayer.sendPacket(otherPlayer, buildSpawnPlayerPacket(player));
-        }
+//        for(Player otherPlayer: appleSkinSpigotPlugin.getServer().getOnlinePlayers()) {
+//            craftPlayer.sendPacket(otherPlayer, buildSpawnPlayerPacket(player));
+//        }
     }
 
     void onPlayerLogOut(Player player) {
-//        getLogger().info(String.format("onPlayerLogOut eid=%d", player.getEntityId()));
+        plugin.getLogger().info(String.format("onPlayerLogOut eid=%d", player.getEntityId()));
         playerPositions.remove(player.getEntityId());
+        // TODO send entity despawn for player
     }
 
 }
