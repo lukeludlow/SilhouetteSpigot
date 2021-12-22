@@ -88,3 +88,5 @@ fabric.properties
 
 bundler/
 plugins/
+testserver/
+.DS_Store
