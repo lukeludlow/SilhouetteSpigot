@@ -1,6 +1,5 @@
 package dev.lukel.silhouetteserver;
 
-
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -16,7 +15,7 @@ public class LoginListener implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        syncTask.onPlayerLogIn(event.getPlayer());
+        syncTask.onPlayerJoin(event.getPlayer());
     }
 
     @EventHandler
