@@ -1,4 +1,4 @@
-package dev.lukel.silhouetteserver;
+package dev.lukel.silhouetteserver.player;
 
 import org.bukkit.Server;
 
