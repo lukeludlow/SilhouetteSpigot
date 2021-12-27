@@ -15,12 +15,15 @@ import java.util.List;
 public class ProtocolLibraryAccessor {
 
     private JavaPlugin plugin;
+    private boolean shouldCancelDestroyPackets;
 
     public ProtocolLibraryAccessor(JavaPlugin plugin) {
         this.plugin = plugin;
+        blockPlayerEntityDestroyPackets();
     }
 
     public void listenToPackets() {
+
         ProtocolManager protocolManager = getProtocolManager();
 
         protocolManager.addPacketListener(
@@ -44,8 +47,10 @@ public class ProtocolLibraryAccessor {
 //                                    boolean anyMatch = plugin.getServer().getOnlinePlayers().stream().anyMatch(player -> player.getEntityId() == entityId);
 //                                    plugin.getLogger().info(String.format("filter entityId=%d, anyMatch=%b", entityId, anyMatch));
                                     if (plugin.getServer().getOnlinePlayers().stream().anyMatch(player -> player.getEntityId() == entityId)) {
-                                        plugin.getLogger().info("cancelling packet!!!");
-                                        event.setCancelled(true);
+                                        if (shouldCancelDestroyPackets) {
+                                            plugin.getLogger().info("cancelling packet!!!");
+                                            event.setCancelled(true);
+                                        }
                                     }
                                 });
                             });
@@ -76,7 +81,7 @@ public class ProtocolLibraryAccessor {
                     public void onPacketSending(PacketEvent event) {
                         if (event.getPacketType() == PacketType.Play.Server.PLAYER_INFO) {
                             PacketContainer packet = event.getPacket();
-//                            plugin.getLogger().info(String.format("player info packet"));
+                            plugin.getLogger().info(String.format("received player info packet"));
                         }
                     }
                 }
@@ -88,11 +93,21 @@ public class ProtocolLibraryAccessor {
                     public void onPacketSending(PacketEvent event) {
                         if (event.getPacketType() == PacketType.Play.Server.NAMED_ENTITY_SPAWN) {
                             PacketContainer packet = event.getPacket();
-//                            plugin.getLogger().info(String.format("named entity spawn"));
+                            plugin.getLogger().info(String.format("received named entity spawn"));
                         }
                     }
                 }
         );
+    }
+
+    public void allowPlayerEntityDestroyPackets() {
+        plugin.getLogger().info("allowPlayerEntityDestroyPackets");
+        this.shouldCancelDestroyPackets = false;
+    }
+
+    public void blockPlayerEntityDestroyPackets() {
+        plugin.getLogger().info("blockPlayerEntityDestroyPackets");
+        this.shouldCancelDestroyPackets = true;
     }
 
     private ProtocolManager getProtocolManager() {

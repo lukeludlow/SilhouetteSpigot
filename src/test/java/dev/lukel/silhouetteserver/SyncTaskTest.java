@@ -1,7 +1,6 @@
 package dev.lukel.silhouetteserver;
 
-import dev.lukel.silhouetteserver.player.BukkitCraftPlayer;
-import dev.lukel.silhouetteserver.player.BukkitCraftPlayerFactory;
+import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.junit.Before;
@@ -9,51 +8,94 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Logger;
 
-import static org.easymock.EasyMock.createMock;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @RunWith(PowerMockRunner.class)
+@PrepareForTest(SyncTask.class)
 public class SyncTaskTest {
 
     @Mock
     Server serverMock;
     @Mock
-    BukkitCraftPlayer craftPlayerMock;
-    @Mock
     SilhouettePlugin pluginMock;
     @Mock
-    BukkitCraftPlayerFactory factoryMock;
+    ProtocolLibraryAccessor protocolAccessorMock;
+    @Mock
+    Logger loggerMock;
+    @Mock
+    PacketBuilder packetBuilderMock;
+    @Mock
+    ProtocolSender protocolSenderMock;
 
-    SyncTask syncTask;
+    @Mock
+    Player playerOneMock;
+    @Mock
+    Player playerTwoMock;
+    @Mock
+    Player playerThreeMock;
+    @Mock
+    Location locationMock;
+
+//    SyncTask syncTask;
 
     @Before
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-    }
-
-    @Test
-    public void syncTaskCreatesBukkitPlayer() {
-        new SyncTask(pluginMock, factoryMock);
-        verify(factoryMock, times(1)).getBukkitCraftPlayer(serverMock);
-    }
-
-    @Test
-    public void run_shouldUpdatePlayerWithOtherPlayersInfo() {
-        Player playerOneMock = createMock(Player.class);
-        Player playerTwoMock = createMock(Player.class);
-        Player playerThreeMock = createMock(Player.class);
+        when(pluginMock.getServer()).thenReturn(serverMock);
+        when(pluginMock.getLogger()).thenReturn(loggerMock);
         when(playerOneMock.getEntityId()).thenReturn(1);
         when(playerTwoMock.getEntityId()).thenReturn(2);
         when(playerThreeMock.getEntityId()).thenReturn(3);
+        when(playerOneMock.getLocation()).thenReturn(locationMock);
+        when(playerTwoMock.getLocation()).thenReturn(locationMock);
+        when(playerThreeMock.getLocation()).thenReturn(locationMock);
         List<Player> onlinePlayers = Arrays.asList(playerOneMock, playerTwoMock, playerThreeMock);
         doReturn(onlinePlayers).when(serverMock).getOnlinePlayers();
+        when(pluginMock.getServer()).thenReturn(serverMock);
+    }
 
-        SyncTask syncTask = new SyncTask(pluginMock, factoryMock);
+    @Test
+    public void run_shouldUpdatePlayerWithOtherPlayersInfo() throws Exception {
+        final double distance = 161;
+        when(locationMock.distance(any(Location.class))).thenReturn(distance);
+
+        SyncTask syncTask = spy(new SyncTask(pluginMock, protocolAccessorMock, packetBuilderMock, protocolSenderMock));
+        syncTask.run();
+
+        verify(syncTask, times(2)).updatePlayer(eq(playerOneMock), any(Player.class));
+        verify(syncTask, times(2)).updatePlayer(eq(playerTwoMock), any(Player.class));
+        verify(syncTask, times(2)).updatePlayer(eq(playerThreeMock), any(Player.class));
+    }
+
+    @Test
+    public void run_playersWithinRenderDistance_shouldNotSendUpdates() {
+        final double distance = 10;
+        when(locationMock.distance(any(Location.class))).thenReturn(distance);
+
+        SyncTask syncTask = spy(new SyncTask(pluginMock, protocolAccessorMock, packetBuilderMock, protocolSenderMock));
+        syncTask.run();
+
+        verify(syncTask, never()).updatePlayer(eq(playerOneMock), any(Player.class));
+        verify(syncTask, never()).updatePlayer(eq(playerTwoMock), any(Player.class));
+        verify(syncTask, never()).updatePlayer(eq(playerThreeMock), any(Player.class));
+    }
+
+    @Test
+    public void onPlayerJoin_shouldSendPlayerInfoSpawnPacketsToAllOtherPlayers() {
     }
 
 }
