@@ -16,11 +16,9 @@ public class ProtocolSender {
 
     public void sendPacket(Player player, IPacketContainer packet) {
         try {
-//            int otherEntityId = packet.getPacket().getIntegers().readSafely(0);
-//            getLogger().info(String.format("sendPacket type=%s. player=%d, otherplayer=%d", packet.getPacket().getType(), player.getEntityId(), otherEntityId));
             protocolManager.sendServerPacket(player, packet.getPacket());
         } catch (InvocationTargetException e) {
-            throw new RuntimeException("cannot send packet " + packet, e);
+            throw new RuntimeException("silhouette cannot send packet " + packet, e);
         }
     }
 

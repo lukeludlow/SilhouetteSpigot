@@ -8,8 +8,8 @@ import java.io.File;
 
 public class SilhouettePlugin extends JavaPlugin {
 
-    private SyncTask syncTask = null;
-    private ProtocolLibraryAccessor protocolLibraryAccessor = null;
+    private SyncTask syncTask;
+    private ProtocolListener protocolListener;
 
     public SilhouettePlugin() {
         super();
@@ -23,20 +23,27 @@ public class SilhouettePlugin extends JavaPlugin {
     public void onEnable() {
         super.onEnable();
         getLogger().info("silhouette onEnable");
-        protocolLibraryAccessor = createProtocolLibraryAccessor();
+        protocolListener = createProtocolListener();
         syncTask = createSyncTask();
         getServer().getPluginManager().registerEvents(new LoginListener(syncTask), this);
-        // delay=0, period=1 (run task every 1 server tick)
-        syncTask.runTaskTimer(this, 0L, 1L);
-        protocolLibraryAccessor.listenToPackets();
+        syncTask.runTaskTimer(this, 0L, 1L); // delay=0, period=1 (run task every 1 server tick)
+        protocolListener.listenToPackets();
     }
 
     SyncTask createSyncTask() {
-        return new SyncTask(this, protocolLibraryAccessor, new PacketBuilder(), new ProtocolSender());
+        return new SyncTask(this, protocolListener, createPacketBuilder(), createProtocolSender());
     }
 
-    ProtocolLibraryAccessor createProtocolLibraryAccessor() {
-        return new ProtocolLibraryAccessor(this);
+    ProtocolListener createProtocolListener() {
+        return new ProtocolListener(this);
+    }
+
+    PacketBuilder createPacketBuilder() {
+        return new PacketBuilder();
+    }
+
+    ProtocolSender createProtocolSender() {
+        return new ProtocolSender();
     }
 
     @Override

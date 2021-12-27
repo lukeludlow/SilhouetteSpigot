@@ -10,36 +10,34 @@ import java.util.Map;
 public class SyncTask extends BukkitRunnable {
 
     private final SilhouettePlugin plugin;
-    private final ProtocolLibraryAccessor protocolAccessor;
+    private final ProtocolListener protocolListener;
     private final PacketBuilder packetBuilder;
     private final ProtocolSender protocolSender;
 
     private final Map<Integer, Location> playerPositions;
-    private final int viewDistanceBlockRange = 160;  // assuming view distance = 10
+    private final int viewDistanceBlockRange;
 
-    SyncTask(SilhouettePlugin plugin, ProtocolLibraryAccessor protocolAccessor, PacketBuilder packetBuilder, ProtocolSender protocolSender) {
+    SyncTask(SilhouettePlugin plugin, ProtocolListener protocolListener, PacketBuilder packetBuilder, ProtocolSender protocolSender) {
         this.plugin = plugin;
-        this.protocolAccessor = protocolAccessor;
+        this.protocolListener = protocolListener;
         this.packetBuilder = packetBuilder;
         this.protocolSender = protocolSender;
 
         playerPositions = new HashMap<>();
 
-//        craftPlayer = bukkitCraftPlayerFactory.getBukkitCraftPlayer(plugin.getServer());
-
-        plugin.getLogger().info(String.format("view distance = %d", viewDistanceBlockRange));
+        int viewDistance = plugin.getServer().getViewDistance();
+        int blocksPerChunk = 16;
+        viewDistanceBlockRange = viewDistance * blocksPerChunk;
+        plugin.getLogger().info(String.format("set view distance block range to %d blocks", viewDistanceBlockRange));
     }
 
     @Override
     public void run() {
         for(Player player : plugin.getServer().getOnlinePlayers()) {
-//            getLogger().info(String.format("updating player uuid=%s entityid=%d", player.getUniqueId(), player.getEntityId()));
             for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
                 double distance = player.getLocation().distance(otherPlayer.getLocation());
-//                getLogger().info(String.format("distance between players = %s", distance));
                 if (distance > viewDistanceBlockRange) {
                     if (!player.equals(otherPlayer)) {
-//                        getLogger().info(String.format("sending position of other player uuid=%s entityid=%d", otherPlayer.getUniqueId(), otherPlayer.getEntityId()));
                         updatePlayer(player, otherPlayer);
                     }
                 }
@@ -57,8 +55,13 @@ public class SyncTask extends BukkitRunnable {
             }
             protocolSender.sendPacket(player, packetBuilder.buildMoveLookPacket(otherPlayer, previousLocation, currentLocation));
             protocolSender.sendPacket(player, packetBuilder.buildHeadLookPacket(otherPlayer));
+            // TODO add action e.g. flying elytra or mining block or crouching
             playerPositions.put(otherPlayer.getEntityId(), currentLocation);
         }
+    }
+
+    public void syncPlayerPosition() {
+        // TODO
     }
 
     private boolean isDifferentPosition(Location previousLocation, Location currentLocation) {
@@ -68,7 +71,6 @@ public class SyncTask extends BukkitRunnable {
     }
 
     void onPlayerJoin(Player player) {
-        plugin.getLogger().info(String.format("onPlayerJoin"));
         playerPositions.remove(player.getEntityId());
         spawnPlayerForEveryoneElse(player);
     }
@@ -77,7 +79,6 @@ public class SyncTask extends BukkitRunnable {
         // need to schedule this to run later so that PlayerInfo is sent to all players before the spawn player packet
         final long delay = 1;  // delay in server ticks before executing task
         plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-            plugin.getLogger().info("executing scheduleSyncDelayedTask");
             // notify other players that this new player joined
             for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
                 double distance = player.getLocation().distance(otherPlayer.getLocation());
@@ -104,17 +105,13 @@ public class SyncTask extends BukkitRunnable {
     }
 
     void onPlayerLogOut(Player player) {
-        plugin.getLogger().info(String.format("onPlayerLogOut eid=%d", player.getEntityId()));
         playerPositions.remove(player.getEntityId());
-        // TODO manually send entity despawn for player !! that should fix it
-        // the protocol accessor never has to cancel this packet because the logged out player is not in getServer().getOnlinePlayers() !
-        protocolAccessor.allowPlayerEntityDestroyPackets();
+        protocolListener.allowPlayerEntityDestroyPackets();
         for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
-            plugin.getLogger().info("onPlayerLogOut trying to delete entity");
             protocolSender.sendPacket(otherPlayer, packetBuilder.buildDestroyEntityPacket(player));
         }
         final long delay = 1;  // delay in server ticks before executing task
-        plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, protocolAccessor::blockPlayerEntityDestroyPackets, 1);
+        plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, protocolListener::blockPlayerEntityDestroyPackets, 1);
     }
 
 }

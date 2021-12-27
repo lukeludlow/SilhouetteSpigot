@@ -33,7 +33,7 @@ public class SyncTaskTest {
     @Mock
     SilhouettePlugin pluginMock;
     @Mock
-    ProtocolLibraryAccessor protocolAccessorMock;
+    ProtocolListener protocolAccessorMock;
     @Mock
     Logger loggerMock;
     @Mock
@@ -65,11 +65,12 @@ public class SyncTaskTest {
         when(playerThreeMock.getLocation()).thenReturn(locationMock);
         List<Player> onlinePlayers = Arrays.asList(playerOneMock, playerTwoMock, playerThreeMock);
         doReturn(onlinePlayers).when(serverMock).getOnlinePlayers();
+        when(serverMock.getViewDistance()).thenReturn(10);  // 10 chunks
         when(pluginMock.getServer()).thenReturn(serverMock);
     }
 
     @Test
-    public void run_shouldUpdatePlayerWithOtherPlayersInfo() throws Exception {
+    public void run_shouldUpdatePlayerWithOtherPlayersInfo() {
         final double distance = 161;
         when(locationMock.distance(any(Location.class))).thenReturn(distance);
 

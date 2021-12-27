@@ -38,7 +38,7 @@ public class SilhouettePluginTest {
     @Mock
     PluginManager pluginManagerMock;
     @Mock
-    ProtocolLibraryAccessor protocolLibraryAccessorMock;
+    ProtocolListener protocolListenerMock;
     @Mock
     Logger loggerMock;
 
@@ -57,7 +57,7 @@ public class SilhouettePluginTest {
         when(plugin.getServer()).thenReturn(serverMock);
         when(serverMock.getPluginManager()).thenReturn(pluginManagerMock);
         doReturn(syncTaskMock).when(plugin).createSyncTask();
-        doReturn(protocolLibraryAccessorMock).when(plugin).createProtocolLibraryAccessor();
+        doReturn(protocolListenerMock).when(plugin).createProtocolListener();
         plugin.onEnable();
         verify(pluginManagerMock, times(1)).registerEvents(any(LoginListener.class), eq(plugin));
         verify(syncTaskMock, times(1)).runTaskTimer(eq(plugin), anyLong(), anyLong());
@@ -65,12 +65,12 @@ public class SilhouettePluginTest {
 
     @Test
     public void createProtocolLibraryAccessor_createsAccessor() throws Exception {
-        protocolLibraryAccessorMock = createMock(ProtocolLibraryAccessor.class);
-        expectNew(ProtocolLibraryAccessor.class, plugin).andReturn(protocolLibraryAccessorMock);
-        replay(protocolLibraryAccessorMock, ProtocolLibraryAccessor.class);
-        ProtocolLibraryAccessor result = plugin.createProtocolLibraryAccessor();
-        verify(protocolLibraryAccessorMock, ProtocolLibraryAccessor.class);
-        assertEquals(result, protocolLibraryAccessorMock);
+        protocolListenerMock = createMock(ProtocolListener.class);
+        expectNew(ProtocolListener.class, plugin).andReturn(protocolListenerMock);
+        replay(protocolListenerMock, ProtocolListener.class);
+        ProtocolListener result = plugin.createProtocolListener();
+        verify(protocolListenerMock, ProtocolListener.class);
+        assertEquals(result, protocolListenerMock);
     }
 
 //    @Test
