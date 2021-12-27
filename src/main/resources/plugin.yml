@@ -1,4 +1,4 @@
-name: silhouette-server
+name: SilhouetteServer
 version: 1.0.0
 author: lukeludlow
 main: dev.lukel.silhouetteserver.SilhouettePlugin
