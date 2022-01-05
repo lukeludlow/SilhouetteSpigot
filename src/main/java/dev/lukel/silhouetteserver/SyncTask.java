@@ -2,6 +2,7 @@ package dev.lukel.silhouetteserver;
 
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Pose;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.HashMap;
@@ -15,6 +16,7 @@ public class SyncTask extends BukkitRunnable {
     private final ProtocolSender protocolSender;
 
     private final Map<Integer, Location> playerPositions;
+    private final Map<Integer, Pose> playerPoses;
     private final double viewDistanceBlockRange;
 
     SyncTask(SilhouettePlugin plugin, ProtocolListener protocolListener, PacketBuilder packetBuilder, ProtocolSender protocolSender) {
@@ -24,6 +26,7 @@ public class SyncTask extends BukkitRunnable {
         this.protocolSender = protocolSender;
 
         playerPositions = new HashMap<>();
+        playerPoses = new HashMap<>();
 
         int viewDistance = plugin.getServer().getViewDistance();
         int blocksPerChunk = 16;
@@ -45,26 +48,36 @@ public class SyncTask extends BukkitRunnable {
     public void updatePlayer(Player player, Player otherPlayer) {
         Location currentLocation = otherPlayer.getLocation();
         Location previousLocation = playerPositions.get(otherPlayer.getEntityId());
+        Pose previousPose = playerPoses.get(otherPlayer.getEntityId());
+        Pose currentPose = otherPlayer.getPose();
         if (previousLocation == null || isDifferentPosition(previousLocation, currentLocation)) {
             if (previousLocation == null) {
                 previousLocation = currentLocation;
             }
-            protocolSender.sendPacket(player, packetBuilder.buildHeadLookPacket(otherPlayer));
             protocolSender.sendPacket(player, packetBuilder.buildMoveLookPacket(otherPlayer, previousLocation, currentLocation));
+            protocolSender.sendPacket(player, packetBuilder.buildHeadLookPacket(otherPlayer));
             playerPositions.put(otherPlayer.getEntityId(), currentLocation);
         }
-        // always send player entity metadata so we know things like crouching, sleeping, flying, etc.
-        protocolSender.sendPacket(player, packetBuilder.buildEntityMetadataPacket(otherPlayer));
+
+        if (currentPose != previousPose) {
+            protocolSender.sendPacket(player, packetBuilder.buildEntityMetadataPacket(otherPlayer));
+            playerPoses.put(otherPlayer.getEntityId(), currentPose);
+        }
     }
 
     private boolean isDifferentPosition(Location previousLocation, Location currentLocation) {
         return previousLocation.getX() != currentLocation.getX() ||
                 previousLocation.getY() != currentLocation.getY() ||
-                previousLocation.getZ() != currentLocation.getZ();
+                previousLocation.getZ() != currentLocation.getZ() ||
+                previousLocation.getPitch() != currentLocation.getPitch() ||
+                previousLocation.getYaw() != currentLocation.getY();
     }
 
     void onPlayerJoin(Player player) {
         playerPositions.remove(player.getEntityId());
+        playerPoses.remove(player.getEntityId());
+        playerPositions.put(player.getEntityId(), player.getLocation());
+        playerPoses.put(player.getEntityId(), player.getPose());
         spawnPlayerForEveryoneElse(player);
     }
 
@@ -93,12 +106,32 @@ public class SyncTask extends BukkitRunnable {
 
     void onPlayerLogOut(Player player) {
         playerPositions.remove(player.getEntityId());
+        playerPoses.remove(player.getEntityId());
         protocolListener.allowPlayerEntityDestroyPackets();
         for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
             protocolSender.sendPacket(otherPlayer, packetBuilder.buildDestroyEntityPacket(player));
         }
-        final long delay = 1;  // delay in server ticks before executing task
-        plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, protocolListener::blockPlayerEntityDestroyPackets, delay);
+        protocolListener.blockPlayerEntityDestroyPackets();
+    }
+
+    void onPlayerRespawn(Player player) {
+        spawnPlayerForEveryoneElse(player);
+    }
+
+    void onPlayerDeath(Player player) {
+        plugin.getLogger().info(String.format("onPlayerDeath. player location = %s", player.getLocation()));
+        for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
+            // only update other players beyond normal render distance that this player died
+            if (shouldSendUpdate(player, otherPlayer)) {
+                // need this packet first to trigger death animation
+                protocolSender.sendPacket(otherPlayer, packetBuilder.buildEntityZeroHealthPacket(player));
+                // wait 20 ticks before destroying so that death animation has time to play
+                final long delay = 20;
+                plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+                    protocolSender.sendPacket(otherPlayer, packetBuilder.buildDestroyEntityPacket(player));
+                }, delay);
+            }
+        }
     }
 
     private boolean shouldSendUpdate(Player player1, Player player2) {

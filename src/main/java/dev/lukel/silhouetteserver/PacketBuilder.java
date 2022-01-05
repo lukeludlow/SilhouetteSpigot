@@ -12,8 +12,6 @@ import org.bukkit.entity.Pose;
 import java.util.List;
 import java.util.Optional;
 
-import static org.apache.logging.log4j.LogManager.getLogger;
-
 
 public class PacketBuilder {
 
@@ -89,9 +87,8 @@ public class PacketBuilder {
         watcher.setObject(6, serializer, bukkitPoseToNmsPose(player.getPose()));
         if (player.getPose() == Pose.SLEEPING) {
             Location l = player.getLocation();
-            getLogger().info(String.format("sleeping. l=%s", l));
             BlockPosition block = new BlockPosition(l.getX(), l.getY(), l.getZ());
-            // optional=true
+            // set block position with optional=true
             watcher.setObject(14, WrappedDataWatcher.Registry.get(BlockPosition.class, true), Optional.of(block));
         }
         packet.getWatchableCollectionModifier()
@@ -99,6 +96,19 @@ public class PacketBuilder {
         return new IPacketContainer(packet);
     }
 
+
+    public IPacketContainer buildEntityZeroHealthPacket(Player player) {
+        PacketContainer packet = new PacketContainer(PacketType.Play.Server.ENTITY_METADATA);
+        packet.getIntegers()
+                .write(0, player.getEntityId());
+        WrappedDataWatcher watcher = new WrappedDataWatcher();
+        watcher.setEntity(player);
+        WrappedDataWatcher.Serializer serializer = WrappedDataWatcher.Registry.get(Float.class);
+        watcher.setObject(9, serializer, 0.0f);
+        packet.getWatchableCollectionModifier()
+                .write(0, watcher.getWatchableObjects());
+        return new IPacketContainer(packet);
+    }
 
 
     private byte toAngle(float f) {
