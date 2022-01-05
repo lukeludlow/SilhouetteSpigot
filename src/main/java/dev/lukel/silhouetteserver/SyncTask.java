@@ -15,7 +15,7 @@ public class SyncTask extends BukkitRunnable {
     private final ProtocolSender protocolSender;
 
     private final Map<Integer, Location> playerPositions;
-    private final int viewDistanceBlockRange;
+    private final double viewDistanceBlockRange;
 
     SyncTask(SilhouettePlugin plugin, ProtocolListener protocolListener, PacketBuilder packetBuilder, ProtocolSender protocolSender) {
         this.plugin = plugin;
@@ -28,42 +28,33 @@ public class SyncTask extends BukkitRunnable {
         int viewDistance = plugin.getServer().getViewDistance();
         int blocksPerChunk = 16;
         viewDistanceBlockRange = viewDistance * blocksPerChunk;
-        plugin.getLogger().info(String.format("set view distance block range to %d blocks", viewDistanceBlockRange));
+        plugin.getLogger().info(String.format("silhouette setting view distance block range to %d blocks", (int)viewDistanceBlockRange));
     }
 
     @Override
     public void run() {
-        for(Player player : plugin.getServer().getOnlinePlayers()) {
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
             for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
-                double distance = player.getLocation().distance(otherPlayer.getLocation());
-                if (distance > viewDistanceBlockRange) {
-                    if (!player.equals(otherPlayer)) {
-                        updatePlayer(player, otherPlayer);
-                    }
+                if (shouldSendUpdate(player, otherPlayer)) {
+                    updatePlayer(player, otherPlayer);
                 }
             }
         }
     }
 
     public void updatePlayer(Player player, Player otherPlayer) {
-
         Location currentLocation = otherPlayer.getLocation();
         Location previousLocation = playerPositions.get(otherPlayer.getEntityId());
-        // TODO send metadata packet even when not different position!
         if (previousLocation == null || isDifferentPosition(previousLocation, currentLocation)) {
             if (previousLocation == null) {
                 previousLocation = currentLocation;
             }
             protocolSender.sendPacket(player, packetBuilder.buildHeadLookPacket(otherPlayer));
             protocolSender.sendPacket(player, packetBuilder.buildMoveLookPacket(otherPlayer, previousLocation, currentLocation));
-            // TODO add action e.g. flying elytra or mining block or crouching
             playerPositions.put(otherPlayer.getEntityId(), currentLocation);
         }
+        // always send player entity metadata so we know things like crouching, sleeping, flying, etc.
         protocolSender.sendPacket(player, packetBuilder.buildEntityMetadataPacket(otherPlayer));
-    }
-
-    public void syncPlayerPosition() {
-        // TODO
     }
 
     private boolean isDifferentPosition(Location previousLocation, Location currentLocation) {
@@ -83,24 +74,18 @@ public class SyncTask extends BukkitRunnable {
         plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> {
             // notify other players that this new player joined
             for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
-                double distance = player.getLocation().distance(otherPlayer.getLocation());
-                if (distance > viewDistanceBlockRange) {
-                    if (!otherPlayer.equals(player)) {
-                        protocolSender.sendPacket(otherPlayer, packetBuilder.buildPlayerSpawnPacket(player));
-                        protocolSender.sendPacket(otherPlayer, packetBuilder.buildMoveLookPacket(player, player.getLocation(), player.getLocation()));
-                        protocolSender.sendPacket(otherPlayer, packetBuilder.buildHeadLookPacket(player));
-                    }
+                if (shouldSendUpdate(player, otherPlayer)) {
+                    protocolSender.sendPacket(otherPlayer, packetBuilder.buildPlayerSpawnPacket(player));
+                    protocolSender.sendPacket(otherPlayer, packetBuilder.buildMoveLookPacket(player, player.getLocation(), player.getLocation()));
+                    protocolSender.sendPacket(otherPlayer, packetBuilder.buildHeadLookPacket(player));
                 }
             }
             // notify the joining player where everyone else is
             for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
-                double distance = player.getLocation().distance(otherPlayer.getLocation());
-                if (distance > viewDistanceBlockRange) {
-                    if (!otherPlayer.equals(player)) {
-                        protocolSender.sendPacket(player, packetBuilder.buildPlayerSpawnPacket(otherPlayer));
-                        protocolSender.sendPacket(player, packetBuilder.buildMoveLookPacket(otherPlayer, otherPlayer.getLocation(), otherPlayer.getLocation()));
-                        protocolSender.sendPacket(player, packetBuilder.buildHeadLookPacket(otherPlayer));
-                    }
+                if (shouldSendUpdate(player, otherPlayer)) {
+                    protocolSender.sendPacket(player, packetBuilder.buildPlayerSpawnPacket(otherPlayer));
+                    protocolSender.sendPacket(player, packetBuilder.buildMoveLookPacket(otherPlayer, otherPlayer.getLocation(), otherPlayer.getLocation()));
+                    protocolSender.sendPacket(player, packetBuilder.buildHeadLookPacket(otherPlayer));
                 }
             }
         }, delay);
@@ -113,7 +98,12 @@ public class SyncTask extends BukkitRunnable {
             protocolSender.sendPacket(otherPlayer, packetBuilder.buildDestroyEntityPacket(player));
         }
         final long delay = 1;  // delay in server ticks before executing task
-        plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, protocolListener::blockPlayerEntityDestroyPackets, 1);
+        plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, protocolListener::blockPlayerEntityDestroyPackets, delay);
+    }
+
+    private boolean shouldSendUpdate(Player player1, Player player2) {
+        double distance = player1.getLocation().distance(player2.getLocation());
+        return (distance > viewDistanceBlockRange) && !player1.equals(player2);
     }
 
 }

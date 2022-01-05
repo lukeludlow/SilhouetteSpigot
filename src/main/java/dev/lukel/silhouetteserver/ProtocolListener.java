@@ -48,6 +48,7 @@ public class ProtocolListener {
                 }
         );
 
+        // FIXME delete this just debugging
         protocolManager.addPacketListener(
                 new PacketAdapter(plugin, ListenerPriority.NORMAL, PacketType.Play.Server.ENTITY_METADATA) {
                     @Override
@@ -58,7 +59,6 @@ public class ProtocolListener {
                             StructureModifier<List<WrappedWatchableObject>> fuck = packet.getWatchableCollectionModifier();
                             List<WrappedWatchableObject> wrapped = fuck.readSafely(0);
                             WrappedWatchableObject w = wrapped.get(0);
-//                            plugin.getLogger().info(String.format("w.getValue()=%s class=%s", w.getValue(), w.getValue().getClass()));
                             if (w.getValue() == net.minecraft.world.entity.EntityPose.c) {  // SLEEPING
                                 plugin.getLogger().info(String.format("listened to entity metadata packet. entityId=%d w=%s", entityId, w));
                             }
@@ -66,6 +66,7 @@ public class ProtocolListener {
                     }
                 }
         );
+
     }
 
     public void allowPlayerEntityDestroyPackets() {

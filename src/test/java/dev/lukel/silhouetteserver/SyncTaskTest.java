@@ -71,7 +71,7 @@ public class SyncTaskTest {
 
     @Test
     public void run_shouldUpdatePlayerWithOtherPlayersInfo() {
-        final double distance = 161;
+        final double distance = 200;
         when(locationMock.distance(any(Location.class))).thenReturn(distance);
 
         SyncTask syncTask = spy(new SyncTask(pluginMock, protocolAccessorMock, packetBuilderMock, protocolSenderMock));
