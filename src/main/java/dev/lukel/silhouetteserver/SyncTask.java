@@ -49,15 +49,17 @@ public class SyncTask extends BukkitRunnable {
 
         Location currentLocation = otherPlayer.getLocation();
         Location previousLocation = playerPositions.get(otherPlayer.getEntityId());
+        // TODO send metadata packet even when not different position!
         if (previousLocation == null || isDifferentPosition(previousLocation, currentLocation)) {
             if (previousLocation == null) {
                 previousLocation = currentLocation;
             }
-            protocolSender.sendPacket(player, packetBuilder.buildMoveLookPacket(otherPlayer, previousLocation, currentLocation));
             protocolSender.sendPacket(player, packetBuilder.buildHeadLookPacket(otherPlayer));
+            protocolSender.sendPacket(player, packetBuilder.buildMoveLookPacket(otherPlayer, previousLocation, currentLocation));
             // TODO add action e.g. flying elytra or mining block or crouching
             playerPositions.put(otherPlayer.getEntityId(), currentLocation);
         }
+        protocolSender.sendPacket(player, packetBuilder.buildEntityMetadataPacket(otherPlayer));
     }
 
     public void syncPlayerPosition() {

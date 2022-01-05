@@ -8,6 +8,7 @@ import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.reflect.StructureModifier;
+import com.comphenix.protocol.wrappers.WrappedWatchableObject;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.List;
@@ -42,6 +43,25 @@ public class ProtocolListener {
                                     }
                                 });
                             });
+                        }
+                    }
+                }
+        );
+
+        protocolManager.addPacketListener(
+                new PacketAdapter(plugin, ListenerPriority.NORMAL, PacketType.Play.Server.ENTITY_METADATA) {
+                    @Override
+                    public void onPacketSending(PacketEvent event) {
+                        PacketContainer packet = event.getPacket();
+                        int entityId = packet.getIntegers().readSafely(0);
+                        if (plugin.getServer().getOnlinePlayers().stream().anyMatch(player -> player.getEntityId() == entityId)) {
+                            StructureModifier<List<WrappedWatchableObject>> fuck = packet.getWatchableCollectionModifier();
+                            List<WrappedWatchableObject> wrapped = fuck.readSafely(0);
+                            WrappedWatchableObject w = wrapped.get(0);
+//                            plugin.getLogger().info(String.format("w.getValue()=%s class=%s", w.getValue(), w.getValue().getClass()));
+                            if (w.getValue() == net.minecraft.world.entity.EntityPose.c) {  // SLEEPING
+                                plugin.getLogger().info(String.format("listened to entity metadata packet. entityId=%d w=%s", entityId, w));
+                            }
                         }
                     }
                 }

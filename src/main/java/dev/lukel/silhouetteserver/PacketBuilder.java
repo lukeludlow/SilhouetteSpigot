@@ -2,18 +2,22 @@ package dev.lukel.silhouetteserver;
 
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.wrappers.WrappedDataWatcher;
+import net.minecraft.core.BlockPosition;
+import net.minecraft.world.entity.EntityPose;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Pose;
 
 import java.util.List;
+import java.util.Optional;
 
-import static org.bukkit.Bukkit.getLogger;
+import static org.apache.logging.log4j.LogManager.getLogger;
 
 
 public class PacketBuilder {
 
     public IPacketContainer buildPlayerSpawnPacket(Player player) {
-        getLogger().info("buildPlayerSpawnPacket");
         PacketContainer packet = new PacketContainer(PacketType.Play.Server.NAMED_ENTITY_SPAWN);
         packet.getIntegers()
                 .write(0, player.getEntityId());
@@ -41,7 +45,7 @@ public class PacketBuilder {
                 .write(0, toAngle(player.getLocation().getYaw()))
                 .write(1, toAngle(player.getLocation().getPitch()));
         packet.getBooleans()
-                .write(0, player.isOnGround());  // FIXME this could cause issues bc deprecated but idk
+                .write(0, !player.isFlying());
         return new IPacketContainer(packet);
     }
 
@@ -61,6 +65,74 @@ public class PacketBuilder {
                 .write(0, List.of(player.getEntityId()));
         return new IPacketContainer(packet);
     }
+
+    private EntityPose bukkitPoseToNmsPose(Pose pose) {
+        return switch (pose) {
+            case STANDING -> EntityPose.a;
+            case FALL_FLYING -> EntityPose.b;
+            case SLEEPING -> EntityPose.c;
+            case SWIMMING -> EntityPose.d;
+            case SPIN_ATTACK -> EntityPose.e;
+            case SNEAKING -> EntityPose.f;
+            case LONG_JUMPING -> EntityPose.g;
+            case DYING -> EntityPose.h;
+        };
+    }
+
+    public IPacketContainer buildEntityMetadataPacket(Player player) {
+//        getLogger().info("buildEntityMetadataPacket");
+        PacketContainer packet = new PacketContainer(PacketType.Play.Server.ENTITY_METADATA);
+        packet.getIntegers()
+                .write(0, player.getEntityId());
+
+//        WrappedDataWatcher watcher = WrappedDataWatcher.getEntityWatcher(player).deepClone();
+//        watcher.setObject(6, player.getPose());
+//        List<WrappedWatchableObject> x = packet.getWatchableCollectionModifier().readSafely(0);
+//        WrappedWatchableObject w = new WrappedWatchableObject(6, player.getPose());
+//        x.add(w);
+//        packet.getWatchableCollectionModifier().write(0, watcher.getWatchableObjects());
+
+//        getLogger().info(String.format("pose=%s (ordinal=%d)", player.getPose(), player.getPose().ordinal()));
+        WrappedDataWatcher watcher = new WrappedDataWatcher();
+        watcher.setEntity(player);
+        WrappedDataWatcher.Serializer serializer = WrappedDataWatcher.Registry.get(EntityPose.class);
+//        watcher.setObject(6, EnumWrappers.EntityPose.fromNms(player.getPose()));
+//        watcher.setObject(6, serializer, player.getPose());
+//        watcher.setObject(6, serializer, bukkitPoseToNmsPose(Pose.SWIMMING));
+        watcher.setObject(6, serializer, bukkitPoseToNmsPose(player.getPose()));
+        if (player.getPose() == Pose.SLEEPING) {
+            Location l = player.getLocation();
+            getLogger().info(String.format("sleeping. l=%s", l));
+            BlockPosition block = new BlockPosition(l.getX(), l.getY(), l.getZ());
+//            BlockPosition block = new BlockPosition(l.toVector());
+            // optional=true
+            watcher.setObject(14, WrappedDataWatcher.Registry.get(BlockPosition.class, true), Optional.of(block));
+        }
+        packet.getWatchableCollectionModifier()
+                .write(0, watcher.getWatchableObjects());
+
+//        byte action = (byte)0x00;
+//        // see https://wiki.vg/Entity_metadata#Entity_Metadata_Format
+//        if (player.isSneaking()) {
+//            action = (byte)0x02;
+//        } else if (player.isSprinting()) {
+//            action = (byte)0x08;
+//        } else if (player.isSwimming()) {
+//            action = (byte)0x10;
+//        } else if (player.isFlying()) {
+//            action = (byte)0x80;
+//        }
+//        getLogger().info(String.format("action=0x%02X", action));
+//        WrappedDataWatcher watcher = new WrappedDataWatcher();
+//        WrappedDataWatcher.Serializer serializer = WrappedDataWatcher.Registry.get(Byte.class);
+//        watcher.setEntity(player);
+//        watcher.setObject(0, serializer, action);
+//        packet.getWatchableCollectionModifier()
+//                .write(0, watcher.getWatchableObjects());
+        return new IPacketContainer(packet);
+    }
+
+
 
     private byte toAngle(float f) {
         return (byte)((int)(f * 256.0F / 360.0F));
