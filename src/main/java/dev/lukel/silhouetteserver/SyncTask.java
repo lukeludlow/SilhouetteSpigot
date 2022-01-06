@@ -120,6 +120,37 @@ public class SyncTask extends BukkitRunnable {
         spawnPlayerForEveryoneElse(player);
     }
 
+    void onPlayerLogOut(Player player) {
+        playerPositions.remove(player.getEntityId());
+        playerPoses.remove(player.getEntityId());
+//        playerVehicles.remove(player.getEntityId());
+        destroyPlayerForEveryoneElse(player);
+    }
+
+    void onPlayerRespawn(Player player) {
+        spawnPlayerForEveryoneElse(player);
+    }
+
+    void onPlayerChangedWorld(Player player) {
+        destroyPlayerForEveryoneElse(player);
+        spawnPlayerForEveryoneElse(player);
+    }
+
+    void onPlayerDeath(Player player) {
+        for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
+            // only update other players beyond normal render distance that this player died
+            if (shouldSendUpdate(player, otherPlayer)) {
+                // need this packet first to trigger death animation
+                protocolSender.sendPacket(otherPlayer, packetBuilder.buildEntityZeroHealthPacket(player));
+                // wait 20 ticks before destroying so that death animation has time to play
+                final long delay = 20;
+                plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+                    protocolSender.sendPacket(otherPlayer, packetBuilder.buildDestroyEntityPacket(player));
+                }, delay);
+            }
+        }
+    }
+
     void spawnPlayerForEveryoneElse(Player player) {
         // need to schedule this to run later so that PlayerInfo is sent to all players before the spawn player packet
         final long delay = 1;  // delay in server ticks before executing task
@@ -145,39 +176,22 @@ public class SyncTask extends BukkitRunnable {
         }, delay);
     }
 
-    void onPlayerLogOut(Player player) {
-        playerPositions.remove(player.getEntityId());
-        playerPoses.remove(player.getEntityId());
-//        playerVehicles.remove(player.getEntityId());
+    private void destroyPlayerForEveryoneElse(Player player) {
         protocolListener.allowPlayerEntityDestroyPackets();
         for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
-            protocolSender.sendPacket(otherPlayer, packetBuilder.buildDestroyEntityPacket(player));
+            // destroy regardless of distance and dimension
+            if (!player.equals(otherPlayer)) {
+                protocolSender.sendPacket(otherPlayer, packetBuilder.buildDestroyEntityPacket(player));
+            }
         }
         protocolListener.blockPlayerEntityDestroyPackets();
     }
 
-    void onPlayerRespawn(Player player) {
-        spawnPlayerForEveryoneElse(player);
-    }
-
-    void onPlayerDeath(Player player) {
-        for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
-            // only update other players beyond normal render distance that this player died
-            if (shouldSendUpdate(player, otherPlayer)) {
-                // need this packet first to trigger death animation
-                protocolSender.sendPacket(otherPlayer, packetBuilder.buildEntityZeroHealthPacket(player));
-                // wait 20 ticks before destroying so that death animation has time to play
-                final long delay = 20;
-                plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-                    protocolSender.sendPacket(otherPlayer, packetBuilder.buildDestroyEntityPacket(player));
-                }, delay);
-            }
-        }
-    }
 
     private boolean shouldSendUpdate(Player player1, Player player2) {
-        double distance = player1.getLocation().distance(player2.getLocation());
-        return (distance > viewDistanceBlockRange) && !player1.equals(player2);
+        return player1.getWorld().getEnvironment() == player2.getWorld().getEnvironment() &&
+                player1.getLocation().distance(player2.getLocation()) > viewDistanceBlockRange &&
+                !player1.equals(player2);
     }
 
     private boolean isDifferentPosition(Location previousLocation, Location currentLocation) {

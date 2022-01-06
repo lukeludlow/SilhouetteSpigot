@@ -3,6 +3,7 @@ package dev.lukel.silhouetteserver;
 import dev.lukel.silhouetteserver.packet.PacketBuilder;
 import org.bukkit.Location;
 import org.bukkit.Server;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.junit.Before;
@@ -53,6 +54,8 @@ public class SyncTaskTest {
     Player playerThreeMock;
     @Mock
     Location locationMock;
+    @Mock
+    World worldMock;
 
 //    SyncTask syncTask;
 
@@ -68,6 +71,10 @@ public class SyncTaskTest {
         when(playerOneMock.getLocation()).thenReturn(locationMock);
         when(playerTwoMock.getLocation()).thenReturn(locationMock);
         when(playerThreeMock.getLocation()).thenReturn(locationMock);
+        when(playerOneMock.getWorld()).thenReturn(worldMock);
+        when(playerTwoMock.getWorld()).thenReturn(worldMock);
+        when(playerThreeMock.getWorld()).thenReturn(worldMock);
+        when(worldMock.getEnvironment()).thenReturn(World.Environment.NORMAL);
         List<Player> onlinePlayers = Arrays.asList(playerOneMock, playerTwoMock, playerThreeMock);
         doReturn(onlinePlayers).when(serverMock).getOnlinePlayers();
         when(serverMock.getViewDistance()).thenReturn(10);  // 10 chunks
