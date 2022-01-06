@@ -7,6 +7,7 @@ import com.comphenix.protocol.wrappers.WrappedDataWatcher;
 import net.minecraft.core.BlockPosition;
 import net.minecraft.world.entity.EntityPose;
 import org.bukkit.Location;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Pose;
 import org.bukkit.inventory.EquipmentSlot;
@@ -45,7 +46,7 @@ public class PacketBuilder {
                 .write(0, toAngle(player.getLocation().getYaw()))
                 .write(1, toAngle(player.getLocation().getPitch()));
         packet.getBooleans()
-                .write(0, !player.isFlying());
+                .write(0, player.isOnGround());
         return new IPacketContainer(packet);
     }
 
@@ -120,6 +121,18 @@ public class PacketBuilder {
         packet.getIntegers()
                 .write(0, player.getEntityId())
                 .write(1, 0);  // swing main arm
+        return new IPacketContainer(packet);
+    }
+
+    public IPacketContainer buildBoatPassengersPacket(Entity boat) {
+        PacketContainer packet = new PacketContainer(PacketType.Play.Server.MOUNT);
+        packet.getIntegers()
+                .write(0, boat.getEntityId());
+        int[] passengerIds = boat.getPassengers().stream()
+                .mapToInt(Entity::getEntityId)
+                .toArray();
+        packet.getIntegerArrays()
+                .write(0, passengerIds);
         return new IPacketContainer(packet);
     }
 
