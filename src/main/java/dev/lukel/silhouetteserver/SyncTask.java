@@ -82,11 +82,19 @@ public class SyncTask extends BukkitRunnable {
     }
 
     private void updatePlayerEquipment(Player receiver, Player subject) {
-        plugin.getLogger().info(String.format("updatePlayerEquipment. receiver=%d, subject=%d", receiver.getEntityId(), subject.getEntityId()));
         List<IPacketContainer> equipmentPackets = packetBuilder.buildPlayerEquipmentPackets(subject);
         equipmentPackets.forEach(packet -> {
             protocolSender.sendPacket(receiver, packet);
         });
+    }
+
+    void onPlayerAnimation(Player player) {
+        // note that PlayerAnimationEvent's PlayerAnimationType is only ARM_SWING so no logic here
+        for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
+            if (shouldSendUpdate(player, otherPlayer)) {
+                protocolSender.sendPacket(otherPlayer, packetBuilder.buildPlayerAnimationPacket(player));
+            }
+        }
     }
 
     void onPlayerJoin(Player player) {
@@ -135,7 +143,6 @@ public class SyncTask extends BukkitRunnable {
     }
 
     void onPlayerDeath(Player player) {
-        plugin.getLogger().info(String.format("onPlayerDeath. player location = %s", player.getLocation()));
         for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
             // only update other players beyond normal render distance that this player died
             if (shouldSendUpdate(player, otherPlayer)) {

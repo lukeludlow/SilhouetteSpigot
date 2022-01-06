@@ -115,6 +115,14 @@ public class PacketBuilder {
         return new IPacketContainer(packet.getHandle());
     }
 
+    public IPacketContainer buildPlayerAnimationPacket(Player player) {
+        PacketContainer packet = new PacketContainer(PacketType.Play.Server.ANIMATION);
+        packet.getIntegers()
+                .write(0, player.getEntityId())
+                .write(1, 0);  // swing main arm
+        return new IPacketContainer(packet);
+    }
+
     private EntityPose bukkitPoseToNmsPose(Pose pose) {
         return switch (pose) {
             case STANDING -> EntityPose.a;

@@ -29,6 +29,7 @@ public class SilhouettePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new LoginListener(syncTask), this);
         getServer().getPluginManager().registerEvents(new DeathRespawnListener(syncTask), this);
         getServer().getPluginManager().registerEvents(new EquipmentListener(syncTask), this);
+        getServer().getPluginManager().registerEvents(new AnimationListener(syncTask), this);
         syncTask.runTaskTimer(this, 0L, 1L); // delay=0, period=1 (run task every 1 server tick)
         protocolListener.listenToPackets();
     }

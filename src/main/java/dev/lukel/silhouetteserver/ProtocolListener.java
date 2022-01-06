@@ -44,9 +44,9 @@ public class ProtocolListener {
                                         if (shouldCancelDestroyPackets) {
                                             if (foundPlayer.getHealth() == 0.0) {
                                                 // player has died, so we DO want to send destroy packet
-                                                plugin.getLogger().info("allowing destroy packet because player has died");
+//                                                plugin.getLogger().info("allowing destroy packet because player has died");
                                             } else {
-                                                plugin.getLogger().info("cancelling player destroy packet");
+//                                                plugin.getLogger().info("cancelling player destroy packet");
                                                 event.setCancelled(true);
                                             }
                                         }
