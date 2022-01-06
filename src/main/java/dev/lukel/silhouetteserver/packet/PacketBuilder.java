@@ -1,13 +1,15 @@
-package dev.lukel.silhouetteserver;
+package dev.lukel.silhouetteserver.packet;
 
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.wrappers.EnumWrappers;
 import com.comphenix.protocol.wrappers.WrappedDataWatcher;
 import net.minecraft.core.BlockPosition;
 import net.minecraft.world.entity.EntityPose;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Pose;
+import org.bukkit.inventory.EquipmentSlot;
 
 import java.util.List;
 import java.util.Optional;
@@ -64,19 +66,6 @@ public class PacketBuilder {
         return new IPacketContainer(packet);
     }
 
-    private EntityPose bukkitPoseToNmsPose(Pose pose) {
-        return switch (pose) {
-            case STANDING -> EntityPose.a;
-            case FALL_FLYING -> EntityPose.b;
-            case SLEEPING -> EntityPose.c;
-            case SWIMMING -> EntityPose.d;
-            case SPIN_ATTACK -> EntityPose.e;
-            case SNEAKING -> EntityPose.f;
-            case LONG_JUMPING -> EntityPose.g;
-            case DYING -> EntityPose.h;
-        };
-    }
-
     public IPacketContainer buildEntityMetadataPacket(Player player) {
         PacketContainer packet = new PacketContainer(PacketType.Play.Server.ENTITY_METADATA);
         packet.getIntegers()
@@ -96,7 +85,6 @@ public class PacketBuilder {
         return new IPacketContainer(packet);
     }
 
-
     public IPacketContainer buildEntityZeroHealthPacket(Player player) {
         PacketContainer packet = new PacketContainer(PacketType.Play.Server.ENTITY_METADATA);
         packet.getIntegers()
@@ -110,13 +98,54 @@ public class PacketBuilder {
         return new IPacketContainer(packet);
     }
 
+    public List<IPacketContainer> buildPlayerEquipmentPackets(Player player) {
+        return List.of(
+                buildPlayerEquipmentPacket(player, EnumWrappers.ItemSlot.MAINHAND),
+                buildPlayerEquipmentPacket(player, EnumWrappers.ItemSlot.OFFHAND),
+                buildPlayerEquipmentPacket(player, EnumWrappers.ItemSlot.FEET),
+                buildPlayerEquipmentPacket(player, EnumWrappers.ItemSlot.LEGS),
+                buildPlayerEquipmentPacket(player, EnumWrappers.ItemSlot.CHEST),
+                buildPlayerEquipmentPacket(player, EnumWrappers.ItemSlot.HEAD));
+    }
+
+    public IPacketContainer buildPlayerEquipmentPacket(Player player, EnumWrappers.ItemSlot itemSlot) {
+        WrapperPlayServerEntityEquipment packet = new WrapperPlayServerEntityEquipment();
+        packet.setEntityID(player.getEntityId());
+        packet.setSlotStackPair(itemSlot, player.getEquipment().getItem(itemSlotToEquipmentSlot(itemSlot)));
+        return new IPacketContainer(packet.getHandle());
+    }
+
+    private EntityPose bukkitPoseToNmsPose(Pose pose) {
+        return switch (pose) {
+            case STANDING -> EntityPose.a;
+            case FALL_FLYING -> EntityPose.b;
+            case SLEEPING -> EntityPose.c;
+            case SWIMMING -> EntityPose.d;
+            case SPIN_ATTACK -> EntityPose.e;
+            case SNEAKING -> EntityPose.f;
+            case LONG_JUMPING -> EntityPose.g;
+            case DYING -> EntityPose.h;
+        };
+    }
+
+    private EquipmentSlot itemSlotToEquipmentSlot(EnumWrappers.ItemSlot itemSlot) {
+        return switch (itemSlot) {
+            case MAINHAND -> EquipmentSlot.HAND;
+            case OFFHAND -> EquipmentSlot.OFF_HAND;
+            case FEET -> EquipmentSlot.FEET;
+            case LEGS -> EquipmentSlot.LEGS;
+            case CHEST -> EquipmentSlot.CHEST;
+            case HEAD -> EquipmentSlot.HEAD;
+        };
+    }
 
     private byte toAngle(float f) {
         return (byte)((int)(f * 256.0F / 360.0F));
     }
 
     private short calculateDelta(double previous, double current) {
-        // Change in X position as (currentX * 32 - prevX * 32) * 128    (source: https://wiki.vg/Protocol#Entity_Position)
+        // (source: https://wiki.vg/Protocol#Entity_Position)
+        // Change in X position as (currentX * 32 - prevX * 32) * 128
         return (short) ((current * 32 - previous * 32) * 128);
     }
 

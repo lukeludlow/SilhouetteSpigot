@@ -1,4 +1,4 @@
-package dev.lukel.silhouetteserver;
+package dev.lukel.silhouetteserver.packet;
 
 import com.comphenix.protocol.events.PacketContainer;
 

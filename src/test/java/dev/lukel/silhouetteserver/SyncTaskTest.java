@@ -1,8 +1,10 @@
 package dev.lukel.silhouetteserver;
 
+import dev.lukel.silhouetteserver.packet.PacketBuilder;
 import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitScheduler;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -31,6 +33,8 @@ public class SyncTaskTest {
     @Mock
     Server serverMock;
     @Mock
+    BukkitScheduler schedulerMock;
+    @Mock
     SilhouettePlugin pluginMock;
     @Mock
     ProtocolListener protocolAccessorMock;
@@ -57,6 +61,7 @@ public class SyncTaskTest {
         MockitoAnnotations.openMocks(this);
         when(pluginMock.getServer()).thenReturn(serverMock);
         when(pluginMock.getLogger()).thenReturn(loggerMock);
+        when(serverMock.getScheduler()).thenReturn(schedulerMock);
         when(playerOneMock.getEntityId()).thenReturn(1);
         when(playerTwoMock.getEntityId()).thenReturn(2);
         when(playerThreeMock.getEntityId()).thenReturn(3);

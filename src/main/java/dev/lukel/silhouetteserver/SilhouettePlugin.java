@@ -1,5 +1,6 @@
 package dev.lukel.silhouetteserver;
 
+import dev.lukel.silhouetteserver.packet.PacketBuilder;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.java.JavaPluginLoader;
@@ -26,7 +27,8 @@ public class SilhouettePlugin extends JavaPlugin {
         protocolListener = createProtocolListener();
         syncTask = createSyncTask();
         getServer().getPluginManager().registerEvents(new LoginListener(syncTask), this);
-        getServer().getPluginManager().registerEvents(new DeathRespawnListener(this, syncTask), this);
+        getServer().getPluginManager().registerEvents(new DeathRespawnListener(syncTask), this);
+        getServer().getPluginManager().registerEvents(new EquipmentListener(syncTask), this);
         syncTask.runTaskTimer(this, 0L, 1L); // delay=0, period=1 (run task every 1 server tick)
         protocolListener.listenToPackets();
     }

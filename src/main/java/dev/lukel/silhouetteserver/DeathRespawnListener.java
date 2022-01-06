@@ -7,11 +7,9 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 
 public class DeathRespawnListener implements Listener {
 
-    private final SilhouettePlugin plugin;
     private final SyncTask syncTask;
 
-    DeathRespawnListener(SilhouettePlugin plugin, SyncTask syncTask) {
-        this.plugin = plugin;
+    DeathRespawnListener(SyncTask syncTask) {
         this.syncTask = syncTask;
     }
 

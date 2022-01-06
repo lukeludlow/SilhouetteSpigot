@@ -1,11 +1,14 @@
 package dev.lukel.silhouetteserver;
 
+import dev.lukel.silhouetteserver.packet.IPacketContainer;
+import dev.lukel.silhouetteserver.packet.PacketBuilder;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Pose;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class SyncTask extends BukkitRunnable {
@@ -15,9 +18,10 @@ public class SyncTask extends BukkitRunnable {
     private final PacketBuilder packetBuilder;
     private final ProtocolSender protocolSender;
 
+    private final double viewDistanceBlockRange;
+
     private final Map<Integer, Location> playerPositions;
     private final Map<Integer, Pose> playerPoses;
-    private final double viewDistanceBlockRange;
 
     SyncTask(SilhouettePlugin plugin, ProtocolListener protocolListener, PacketBuilder packetBuilder, ProtocolSender protocolSender) {
         this.plugin = plugin;
@@ -65,19 +69,29 @@ public class SyncTask extends BukkitRunnable {
         }
     }
 
-    private boolean isDifferentPosition(Location previousLocation, Location currentLocation) {
-        return previousLocation.getX() != currentLocation.getX() ||
-                previousLocation.getY() != currentLocation.getY() ||
-                previousLocation.getZ() != currentLocation.getZ() ||
-                previousLocation.getPitch() != currentLocation.getPitch() ||
-                previousLocation.getYaw() != currentLocation.getY();
+    void updatePlayerEquipment(Player player) {
+        // notify all other players what equipment this player has
+        final long delay = 1;  // (wait one tick so that the item/inventory click/move event finishes)
+        plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+            for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
+                if (shouldSendUpdate(player, otherPlayer)) {
+                    updatePlayerEquipment(otherPlayer, player);
+                }
+            }
+        }, delay);
+    }
+
+    private void updatePlayerEquipment(Player receiver, Player subject) {
+        plugin.getLogger().info(String.format("updatePlayerEquipment. receiver=%d, subject=%d", receiver.getEntityId(), subject.getEntityId()));
+        List<IPacketContainer> equipmentPackets = packetBuilder.buildPlayerEquipmentPackets(subject);
+        equipmentPackets.forEach(packet -> {
+            protocolSender.sendPacket(receiver, packet);
+        });
     }
 
     void onPlayerJoin(Player player) {
         playerPositions.remove(player.getEntityId());
         playerPoses.remove(player.getEntityId());
-        playerPositions.put(player.getEntityId(), player.getLocation());
-        playerPoses.put(player.getEntityId(), player.getPose());
         spawnPlayerForEveryoneElse(player);
     }
 
@@ -91,6 +105,7 @@ public class SyncTask extends BukkitRunnable {
                     protocolSender.sendPacket(otherPlayer, packetBuilder.buildPlayerSpawnPacket(player));
                     protocolSender.sendPacket(otherPlayer, packetBuilder.buildMoveLookPacket(player, player.getLocation(), player.getLocation()));
                     protocolSender.sendPacket(otherPlayer, packetBuilder.buildHeadLookPacket(player));
+                    updatePlayerEquipment(otherPlayer, player);
                 }
             }
             // notify the joining player where everyone else is
@@ -99,6 +114,7 @@ public class SyncTask extends BukkitRunnable {
                     protocolSender.sendPacket(player, packetBuilder.buildPlayerSpawnPacket(otherPlayer));
                     protocolSender.sendPacket(player, packetBuilder.buildMoveLookPacket(otherPlayer, otherPlayer.getLocation(), otherPlayer.getLocation()));
                     protocolSender.sendPacket(player, packetBuilder.buildHeadLookPacket(otherPlayer));
+                    updatePlayerEquipment(player, otherPlayer);
                 }
             }
         }, delay);
@@ -137,6 +153,14 @@ public class SyncTask extends BukkitRunnable {
     private boolean shouldSendUpdate(Player player1, Player player2) {
         double distance = player1.getLocation().distance(player2.getLocation());
         return (distance > viewDistanceBlockRange) && !player1.equals(player2);
+    }
+
+    private boolean isDifferentPosition(Location previousLocation, Location currentLocation) {
+        return previousLocation.getX() != currentLocation.getX() ||
+                previousLocation.getY() != currentLocation.getY() ||
+                previousLocation.getZ() != currentLocation.getZ() ||
+                previousLocation.getPitch() != currentLocation.getPitch() ||
+                previousLocation.getYaw() != currentLocation.getYaw();
     }
 
 }
