@@ -22,7 +22,6 @@ public class SyncTask extends BukkitRunnable {
 
     private final Map<Integer, Location> playerPositions;
     private final Map<Integer, Pose> playerPoses;
-//    private final Map<Integer, Entity> playerVehicles;
 
     SyncTask(SilhouettePlugin plugin, ProtocolListener protocolListener, PacketBuilder packetBuilder, ProtocolSender protocolSender) {
         this.plugin = plugin;
@@ -32,7 +31,6 @@ public class SyncTask extends BukkitRunnable {
 
         playerPositions = new HashMap<>();
         playerPoses = new HashMap<>();
-//        playerVehicles = new HashMap<>();
 
         int viewDistance = plugin.getServer().getViewDistance();
         int blocksPerChunk = 16;
@@ -56,8 +54,6 @@ public class SyncTask extends BukkitRunnable {
         Location previousLocation = playerPositions.get(otherPlayer.getEntityId());
         Pose currentPose = otherPlayer.getPose();
         Pose previousPose = playerPoses.get(otherPlayer.getEntityId());
-//        Entity currentVehicle = otherPlayer.isInsideVehicle() ? otherPlayer.getVehicle() : null;
-//        Entity previousVehicle = playerVehicles.get(otherPlayer.getEntityId());
         if (previousLocation == null || isDifferentPosition(previousLocation, currentLocation)) {
             if (previousLocation == null) {
                 previousLocation = currentLocation;
@@ -66,23 +62,10 @@ public class SyncTask extends BukkitRunnable {
             protocolSender.sendPacket(player, packetBuilder.buildHeadLookPacket(otherPlayer));
             playerPositions.put(otherPlayer.getEntityId(), currentLocation);
         }
-
         if (currentPose != previousPose) {
             protocolSender.sendPacket(player, packetBuilder.buildEntityMetadataPacket(otherPlayer));
             playerPoses.put(otherPlayer.getEntityId(), currentPose);
         }
-
-//        if (!Objects.equals(currentVehicle, previousVehicle)) {  // Objects.equals handles nulls
-////            plugin.getLogger().info(String.format("currentVehicle=%b. vehicle=%s", currentVehicle, otherPlayer.getVehicle()));
-//            // buildBoatPassengersPacket will get the list of passengers just from the vehicle entity.
-//            // this also handles whenever a player leaves the boat
-//            if (currentVehicle != null) {
-//                protocolSender.sendPacket(player, packetBuilder.buildBoatPassengersPacket(currentVehicle));
-//            } else {
-//                protocolSender.sendPacket(player, packetBuilder.buildBoatPassengersPacket(previousVehicle));
-//            }
-//            playerVehicles.put(otherPlayer.getEntityId(), currentVehicle);
-//        }
     }
 
     void updatePlayerEquipment(Player player) {
@@ -116,14 +99,12 @@ public class SyncTask extends BukkitRunnable {
     void onPlayerJoin(Player player) {
         playerPositions.remove(player.getEntityId());
         playerPoses.remove(player.getEntityId());
-//        playerVehicles.remove(player.getEntityId());
         spawnPlayerForEveryoneElse(player);
     }
 
     void onPlayerLogOut(Player player) {
         playerPositions.remove(player.getEntityId());
         playerPoses.remove(player.getEntityId());
-//        playerVehicles.remove(player.getEntityId());
         destroyPlayerForEveryoneElse(player);
     }
 
