@@ -1,5 +1,5 @@
 name: SilhouetteServer
-version: 1.0.0
+version: 1.0.3
 author: lukeludlow
 main: dev.lukel.silhouetteserver.SilhouettePlugin
 depend: [ProtocolLib]

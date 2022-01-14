@@ -117,7 +117,7 @@ public class SyncTask extends BukkitRunnable {
 
     void onPlayerChangedWorld(Player player) {
         destroyPlayerForEveryoneElse(player);
-        spawnPlayerForEveryoneElse(player);
+        spawnPlayerForEveryoneElse(player, 20);
     }
 
     void onPlayerDeath(Player player) {
@@ -136,12 +136,16 @@ public class SyncTask extends BukkitRunnable {
     }
 
     void spawnPlayerForEveryoneElse(Player player) {
-        // need to schedule this to run later so that PlayerInfo is sent to all players before the spawn player packet
         final long delay = 1;  // delay in server ticks before executing task
+        spawnPlayerForEveryoneElse(player, delay);
+    }
+
+    void spawnPlayerForEveryoneElse(Player player, long delay) {
+        // need to schedule this to run later so that PlayerInfo is sent to all players before the spawn player packet
         plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> {
             // notify other players that this new player joined
             for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
-                if (shouldSendUpdate(player, otherPlayer)) {
+                if (isSameDimension(player, otherPlayer) && isNotSamePerson(player, otherPlayer)) {
                     protocolSender.sendPacket(otherPlayer, packetBuilder.buildPlayerSpawnPacket(player));
                     protocolSender.sendPacket(otherPlayer, packetBuilder.buildMoveLookPacket(player, player.getLocation(), player.getLocation()));
                     protocolSender.sendPacket(otherPlayer, packetBuilder.buildHeadLookPacket(player));
@@ -150,7 +154,7 @@ public class SyncTask extends BukkitRunnable {
             }
             // notify the joining player where everyone else is
             for (Player otherPlayer : plugin.getServer().getOnlinePlayers()) {
-                if (shouldSendUpdate(player, otherPlayer)) {
+                if (isSameDimension(player, otherPlayer) && isNotSamePerson(player, otherPlayer)) {
                     protocolSender.sendPacket(player, packetBuilder.buildPlayerSpawnPacket(otherPlayer));
                     protocolSender.sendPacket(player, packetBuilder.buildMoveLookPacket(otherPlayer, otherPlayer.getLocation(), otherPlayer.getLocation()));
                     protocolSender.sendPacket(player, packetBuilder.buildHeadLookPacket(otherPlayer));
@@ -171,11 +175,22 @@ public class SyncTask extends BukkitRunnable {
         protocolListener.blockPlayerEntityDestroyPackets();
     }
 
-
     private boolean shouldSendUpdate(Player player1, Player player2) {
-        return player1.getWorld().getEnvironment() == player2.getWorld().getEnvironment() &&
-                player1.getLocation().distance(player2.getLocation()) > viewDistanceBlockRange &&
-                !player1.equals(player2);
+        return isSameDimension(player1, player2) &&
+                isNotSamePerson(player1, player2) &&
+                isPastRenderDistance(player1, player2);
+    }
+
+    private boolean isSameDimension(Player player1, Player player2) {
+        return player1.getWorld().getEnvironment() == player2.getWorld().getEnvironment();
+    }
+
+    private boolean isNotSamePerson(Player player1, Player player2) {
+        return !player1.equals(player2);
+    }
+
+    private boolean isPastRenderDistance(Player player1, Player player2) {
+        return player1.getLocation().distance(player2.getLocation()) > viewDistanceBlockRange;
     }
 
     private boolean isDifferentPosition(Location previousLocation, Location currentLocation) {
