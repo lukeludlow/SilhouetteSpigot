@@ -47,6 +47,11 @@ public class SyncTask extends BukkitRunnable {
                 }
             }
         }
+        // update maps after the loop (otherwise first update "eats" update before the other people)
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            playerPositions.put(player.getEntityId(), player.getLocation());
+            playerPoses.put(player.getEntityId(), player.getPose());
+        }
     }
 
     public void updatePlayer(Player player, Player otherPlayer) {
@@ -60,11 +65,9 @@ public class SyncTask extends BukkitRunnable {
             }
             protocolSender.sendPacket(player, packetBuilder.buildMoveLookPacket(otherPlayer, previousLocation, currentLocation));
             protocolSender.sendPacket(player, packetBuilder.buildHeadLookPacket(otherPlayer));
-            playerPositions.put(otherPlayer.getEntityId(), currentLocation);
         }
         if (currentPose != previousPose) {
             protocolSender.sendPacket(player, packetBuilder.buildEntityMetadataPacket(otherPlayer));
-            playerPoses.put(otherPlayer.getEntityId(), currentPose);
         }
     }
 
