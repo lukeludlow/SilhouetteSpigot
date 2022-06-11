@@ -146,6 +146,12 @@ public class PacketBuilder {
             case SNEAKING -> EntityPose.f;
             case LONG_JUMPING -> EntityPose.g;
             case DYING -> EntityPose.h;
+            case CROAKING -> null;
+            case USING_TONGUE -> null;
+            case ROARING -> null;
+            case SNIFFING -> null;
+            case EMERGING -> null;
+            case DIGGING -> null;
         };
     }
 
